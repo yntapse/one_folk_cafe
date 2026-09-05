@@ -1,0 +1,10 @@
+pub mod auth;
+pub mod categories;
+pub mod products;
+pub mod orders;
+pub mod tables;
+pub mod customers;
+pub mod analytics;
+pub mod settings;
+pub mod notifications;
+pub mod files;

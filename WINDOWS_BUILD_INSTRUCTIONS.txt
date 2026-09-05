@@ -1,0 +1,100 @@
+============================================================
+ONE FOLK CAFE - WINDOWS BUILD INSTRUCTIONS
+============================================================
+
+STEP 1: Copy to Windows
+------------------------
+1. Copy "desktop-app-complete.zip" to your Windows machine
+2. Extract it (Right-click → Extract All)
+3. Open the extracted "desktop-app" folder
+
+STEP 2: Install Prerequisites (One-time)
+-----------------------------------------
+Open PowerShell as Administrator and run:
+
+# Install Node.js (if not installed)
+# Download from https://nodejs.org/ (LTS version)
+
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | powershell -Command "iex"
+# Restart PowerShell after this
+
+# Verify installations
+node --version
+npm --version
+rustc --version
+cargo --version
+
+STEP 3: Build the App
+----------------------
+Open PowerShell in the "desktop-app" folder and run:
+
+# Install dependencies (takes 1-2 minutes)
+npm install
+
+# Install additional UI dependencies (needed for build)
+npm install @radix-ui/react-slot @radix-ui/react-dialog @radix-ui/react-dropdown-menu class-variance-authority @hookform/resolvers @tanstack/react-query-devtools
+
+# Build the MSI installer (takes 3-5 minutes)
+npm run dist
+
+STEP 4: Find Your Installer
+----------------------------
+After build completes, your distribution package will be at:
+  dist-client\One-Folk-Cafe-Admin-v1.0.0-Windows.zip
+
+This ZIP contains:
+  - One-Folk-Cafe-Admin-Setup.msi    (Windows installer)
+  - install.bat                      (Easy install)
+  - uninstall.bat                    (Easy uninstall)
+  - backup-data.bat                  (Backup tool)
+  - restore-data.bat                 (Restore tool)
+  - README.txt                       (Client instructions)
+
+STEP 5: Give to Client
+-----------------------
+Send the ZIP file to your client. They just:
+1. Download & Extract
+2. Double-click install.bat
+3. Follow Windows installer (Next, Next, Install, Finish)
+4. Launch from Start Menu
+
+DEFAULT LOGIN:
+  Username: admin
+  Password: admin123
+
+============================================================
+TROUBLESHOOTING
+============================================================
+
+"npm not recognized"
+→ Restart PowerShell after Node.js install
+
+"cargo not recognized"  
+→ Restart PowerShell after Rust install
+
+Build fails with "link.exe not found"
+→ Install "Visual Studio Build Tools" or "Visual Studio Community"
+  Download: https://visualstudio.microsoft.com/downloads/
+  Select: "Desktop development with C++" workload
+
+Rust compilation errors
+→ Update Rust: rustup update stable
+
+Still having issues?
+→ Run: cargo clean (in desktop-app/src-tauri)
+→ Then: npm run dist again
+
+============================================================
+FILE LOCATIONS (For Reference)
+============================================================
+App Data: %APPDATA%\OneFolkCafe\
+  - cafe.db          (All your data)
+  - uploads\         (Product images)
+  - store.json       (Settings)
+  - logs\            (App logs)
+
+Backup: Run backup-data.bat → saves to Desktop
+Restore: Run restore-data.bat → point to backup folder
+
+============================================================

@@ -1,0 +1,35 @@
+name: Build Windows MSI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop-app/**'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build MSI distribution package
+        run: npm run dist:win
+
+      - name: Upload distribution package
+        uses: actions/upload-artifact@v4
+        with:
+          name: one-folk-cafe-windows-installer
+          path: desktop-app/dist-client/**
