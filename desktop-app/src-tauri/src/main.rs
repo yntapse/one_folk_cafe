@@ -1,4 +1,5 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+// TEMPORARY: console left enabled in release builds to diagnose a silent startup failure.
+// Restore `#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]` once fixed.
 
 mod commands;
 mod database;
@@ -11,6 +12,7 @@ use std::sync::Arc;
 use tauri::Manager;
 
 fn main() {
+    println!("[diag] main() starting");
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
@@ -30,17 +32,23 @@ fn main() {
             .level(log::LevelFilter::Info)
             .build())
         .setup(|app| {
+            println!("[diag] setup() started");
             let db = Database::new(app.handle().clone());
-            tauri::async_runtime::block_on(db.init())
-                .expect("Failed to run database migrations");
+            println!("[diag] Database::new() ok");
+            if let Err(e) = tauri::async_runtime::block_on(db.init()) {
+                eprintln!("[diag] db.init() FAILED: {e}");
+                return Err(Box::new(e));
+            }
+            println!("[diag] db.init() ok");
             app.manage(Arc::new(db));
+            println!("[diag] state managed; setup complete");
 
             #[cfg(debug_assertions)]
             {
                 let window = app.get_webview_window("main").unwrap();
                 window.open_devtools();
             }
-            
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

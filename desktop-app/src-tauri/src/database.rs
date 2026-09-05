@@ -1,3 +1,4 @@
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use sqlx::SqlitePool;
 use tauri::Manager;
 use std::sync::Arc;
@@ -20,10 +21,14 @@ impl Database {
             std::fs::create_dir_all(parent).ok();
         }
         
-        let db_url = format!("sqlite://{}?mode=rwc", db_path.display());
-        
-        // Create pool with SQLite
-        let pool = SqlitePool::connect_lazy(&db_url).expect("Failed to create SQLite pool");
+        // Use SqliteConnectOptions with a native path (not a URL string) so this
+        // works correctly on Windows, where the path contains a drive letter and
+        // backslashes that aren't valid inside a "sqlite://" URI.
+        let options = SqliteConnectOptions::new()
+            .filename(&db_path)
+            .create_if_missing(true);
+
+        let pool = SqlitePoolOptions::new().connect_lazy_with(options);
         
         Self { pool }
     }
