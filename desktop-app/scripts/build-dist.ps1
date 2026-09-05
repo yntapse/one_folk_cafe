@@ -33,9 +33,9 @@ if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
-Write-Host "✓ Node.js: $(node --version)" -ForegroundColor Green
-Write-Host "✓ Rust: $(rustc --version)" -ForegroundColor Green
-Write-Host "✓ npm: $(npm --version)" -ForegroundColor Green
+Write-Host "OK: Node.js: $(node --version)" -ForegroundColor Green
+Write-Host "OK: Rust: $(rustc --version)" -ForegroundColor Green
+Write-Host "OK: npm: $(npm --version)" -ForegroundColor Green
 Write-Host ""
 
 # Install dependencies
@@ -58,7 +58,7 @@ if (-not $msiPath) {
     exit 1
 }
 
-Write-Host "✓ Found MSI: $($msiPath.FullName)" -ForegroundColor Green
+Write-Host "OK: Found MSI: $($msiPath.FullName)" -ForegroundColor Green
 
 # Create distribution folder
 $version = (Get-Content package.json | ConvertFrom-Json).version
@@ -133,7 +133,7 @@ DEFAULT LOGIN CREDENTIALS
 Username: admin
 Password: admin123
 
-⚠️  IMPORTANT: Change the password after first login!
+WARNING: IMPORTANT: Change the password after first login!
    Go to Settings > Security > Change Password
 
 ----------------------------------------
@@ -334,13 +334,13 @@ Write-Host "Creating ZIP package..." -ForegroundColor Yellow
 Compress-Archive -Path (Join-Path $OutputDir $appName) -DestinationPath (Join-Path $OutputDir "$appName.zip") -Force
 
 Write-Host ""
-Write-Host "✅ =========================================" -ForegroundColor Green
-Write-Host "✅  DISTRIBUTION PACKAGE READY!" -ForegroundColor Green
-Write-Host "✅ =========================================" -ForegroundColor Green
+Write-Host "=========================================" -ForegroundColor Green
+Write-Host "DISTRIBUTION PACKAGE READY!" -ForegroundColor Green
+Write-Host "=========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "📁 Location: $OutputDir\$appName.zip" -ForegroundColor Cyan
+Write-Host "Location: $OutputDir\$appName.zip" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "📦 Package contains:" -ForegroundColor Cyan
+Write-Host "Package contains:" -ForegroundColor Cyan
 Write-Host "   - One-Folk-Cafe-Admin-Setup.msi  (Windows installer)"
 Write-Host "   - install.bat                     (Easy install helper)"
 Write-Host "   - uninstall.bat                   (Easy uninstall helper)"
@@ -348,9 +348,9 @@ Write-Host "   - backup-data.bat                 (Backup tool)"
 Write-Host "   - restore-data.bat                (Restore tool)"
 Write-Host "   - README.txt                      (Instructions for client)"
 Write-Host ""
-Write-Host "📤 Send the ZIP file to your client." -ForegroundColor Yellow
+Write-Host "Send the ZIP file to your client." -ForegroundColor Yellow
 Write-Host "   They just: Download > Extract > Double-click install.bat" -ForegroundColor Yellow
 Write-Host ""
 (Get-Item (Join-Path $OutputDir "$appName.zip")).Length / 1MB | ForEach-Object { 
-    Write-Host "📦 ZIP Size: $([math]::Round($_, 1)) MB" -ForegroundColor Cyan 
+    Write-Host "ZIP Size: $([math]::Round($_, 1)) MB" -ForegroundColor Cyan 
 }
