@@ -65,7 +65,10 @@ use chrono::Local;
         // Fetch orders
         let mut orders_qb = sqlx::QueryBuilder::new(
             r#"
-            SELECT o.*, c.name as customer_name, c.mobile as customer_mobile
+                 SELECT o.id, o.customer_id, o.table_number, o.status,
+                     CAST(o.total_amount AS REAL) AS total_amount,
+                     o.payment_status, o.payment_method, o.paid_at, o.created_at,
+                     c.name as customer_name, c.mobile as customer_mobile
             FROM orders o
             LEFT JOIN customers c ON o.customer_id = c.id
             "#
@@ -81,7 +84,9 @@ use chrono::Local;
         for order in orders {
             let items = sqlx::query_as::<_, OrderItemWithProduct>(
                 r#"
-                SELECT oi.*, p.name as product_name, p.image_url as product_image
+                  SELECT oi.id, oi.order_id, oi.product_id, oi.serving_type,
+                      oi.quantity, CAST(oi.price AS REAL) AS price,
+                      p.name as product_name, p.image_url as product_image
                 FROM order_items oi
                 JOIN products p ON oi.product_id = p.id
                 WHERE oi.order_id = ?
@@ -123,7 +128,10 @@ use chrono::Local;
         
         let order = sqlx::query_as::<_, OrderRow>(
             r#"
-            SELECT o.*, c.name as customer_name, c.mobile as customer_mobile
+                 SELECT o.id, o.customer_id, o.table_number, o.status,
+                     CAST(o.total_amount AS REAL) AS total_amount,
+                     o.payment_status, o.payment_method, o.paid_at, o.created_at,
+                     c.name as customer_name, c.mobile as customer_mobile
             FROM orders o
             LEFT JOIN customers c ON o.customer_id = c.id
             WHERE o.id = ?
@@ -137,7 +145,9 @@ use chrono::Local;
         
         let items = sqlx::query_as::<_, OrderItemWithProduct>(
             r#"
-            SELECT oi.*, p.name as product_name, p.image_url as product_image
+                 SELECT oi.id, oi.order_id, oi.product_id, oi.serving_type,
+                     oi.quantity, CAST(oi.price AS REAL) AS price,
+                     p.name as product_name, p.image_url as product_image
             FROM order_items oi
             JOIN products p ON oi.product_id = p.id
             WHERE oi.order_id = ?
@@ -201,8 +211,8 @@ use chrono::Local;
         let mut order_items_data = Vec::new();
         
         for item_req in &request.items {
-            let product = sqlx::query_as::<_, Product>(
-                "SELECT * FROM products WHERE id = ? AND is_active = 1 AND available = 1"
+                let product = sqlx::query_as::<_, Product>(
+                "SELECT id, name, description, CAST(full_plate_price AS REAL) AS full_plate_price, CAST(half_plate_price AS REAL) AS half_plate_price, half_plate_available, image_url, category_id, available, is_active, created_at, updated_at FROM products WHERE id = ? AND is_active = 1 AND available = 1"
             )
             .bind(item_req.product_id)
             .fetch_optional(&mut *tx)
@@ -295,7 +305,7 @@ use chrono::Local;
             .map_err(|e| AppError::Database(e).to_string())?;
         
         // Update order basic info
-        let mut qb = sqlx::QueryBuilder::new("UPDATE orders SET updated_at = CURRENT_TIMESTAMP");
+        let mut qb = sqlx::QueryBuilder::new("UPDATE orders SET table_number = table_number");
 
         if let Some(table_number) = &request.table_number {
             qb.push(", table_number = ").push_bind(table_number.clone());
@@ -317,7 +327,7 @@ use chrono::Local;
             let mut total_amount = 0.0_f64;
             for item_req in &items {
                 let product = sqlx::query_as::<_, Product>(
-                    "SELECT * FROM products WHERE id = ? AND is_active = 1 AND available = 1"
+                    "SELECT id, name, description, CAST(full_plate_price AS REAL) AS full_plate_price, CAST(half_plate_price AS REAL) AS half_plate_price, half_plate_available, image_url, category_id, available, is_active, created_at, updated_at FROM products WHERE id = ? AND is_active = 1 AND available = 1"
                 )
                 .bind(item_req.product_id)
                 .fetch_optional(&mut *tx)
@@ -381,7 +391,7 @@ use chrono::Local;
         
         // Get current order for table handling
         let order = sqlx::query_as::<_, Order>(
-            "SELECT * FROM orders WHERE id = ?"
+            "SELECT id, customer_id, table_number, status, CAST(total_amount AS REAL) AS total_amount, payment_status, payment_method, paid_at, created_at FROM orders WHERE id = ?"
         )
         .bind(id)
         .fetch_optional(&mut *tx)
@@ -443,7 +453,6 @@ use chrono::Local;
         
         let mut qb = sqlx::QueryBuilder::new("UPDATE orders SET payment_status = ");
         qb.push_bind(request.payment_status.clone());
-        qb.push(", updated_at = CURRENT_TIMESTAMP");
 
         if let Some(payment_method) = &request.payment_method {
             qb.push(", payment_method = ").push_bind(payment_method.clone());
@@ -451,6 +460,8 @@ use chrono::Local;
 
         if request.payment_status == "PAID" {
             qb.push(", paid_at = CURRENT_TIMESTAMP");
+        } else if request.payment_status == "UNPAID" {
+            qb.push(", paid_at = NULL");
         }
 
         qb.push(" WHERE id = ").push_bind(id);
@@ -481,7 +492,7 @@ use chrono::Local;
         
         // Get order for table handling
         let order = sqlx::query_as::<_, Order>(
-            "SELECT * FROM orders WHERE id = ?"
+            "SELECT id, customer_id, table_number, status, CAST(total_amount AS REAL) AS total_amount, payment_status, payment_method, paid_at, created_at FROM orders WHERE id = ?"
         )
         .bind(id)
         .fetch_optional(&mut *tx)

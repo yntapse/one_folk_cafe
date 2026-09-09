@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { Search, Filter, ChevronDown, MoreHorizontal, Trash2, Clock, DollarSign } from 'lucide-react';
+import { Search, Filter, ChevronDown, MoreHorizontal, Trash2, Clock, DollarSign, Plus, X } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { getOrders, updateOrderStatus, updatePaymentStatus, deleteOrder, getOrderCounts } from '@/lib/api';
+import { getOrders, getProducts, createOrder, updateOrderStatus, updatePaymentStatus, deleteOrder, getOrderCounts } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +19,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { fmtCurrency } from '@/lib/utils';
-import type { OrderWithDetails } from '@/types';
+import type { OrderWithDetails, ProductWithCategory, OrderRequest, OrderItemWithProduct } from '@/types';
 
 const STATUS_OPTIONS = [
   { value: 'PENDING', label: 'Pending', color: 'warning' },
@@ -49,7 +49,13 @@ export default function Orders() {
   const [statusDialog, setStatusDialog] = useState<{ open: boolean; order: OrderWithDetails } | null>(null);
   const [paymentDialog, setPaymentDialog] = useState<{ open: boolean; order: OrderWithDetails } | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<string>('CASH');
+  const [showAddOrder, setShowAddOrder] = useState(false);
+  const [newOrder, setNewOrder] = useState({ productId: '', servingType: 'FULL' as 'FULL' | 'HALF', quantity: '1', tableNumber: '', customerName: '', customerMobile: '' });
+  const [newOrderItems, setNewOrderItems] = useState<OrderRequest['items']>([]);
   const queryClient = useQueryClient();
+
+  const { data: productsData } = useQuery({ queryKey: ['products'], queryFn: getProducts });
+  const products = productsData?.data || [];
 
   const { data: ordersData, isLoading } = useQuery({
     queryKey: ['orders', page, size, statusFilter, paymentStatusFilter, tableFilter],
@@ -90,7 +96,7 @@ export default function Orders() {
       toast.success('Payment status updated');
       setPaymentDialog(null);
     },
-    onError: () => toast.error('Failed to update payment status'),
+    onError: (error) => toast.error(`Failed to update payment status: ${String(error)}`),
   });
 
   const deleteMutation = useMutation({
@@ -105,10 +111,86 @@ export default function Orders() {
     onError: () => toast.error('Failed to delete order'),
   });
 
-  const orders = ordersData?.data?.content || [];
+  const orders = (ordersData?.data?.content || []).map((entry: any) => entry.order
+    ? entry
+    : {
+        order: {
+          id: entry.id,
+          customer_id: entry.customer_id,
+          table_number: entry.table_number,
+          status: entry.status,
+          total_amount: entry.total_amount,
+          payment_status: entry.payment_status || 'UNPAID',
+          payment_method: entry.payment_method,
+          paid_at: entry.paid_at,
+          created_at: entry.created_at,
+        },
+        customer_name: entry.customer_name,
+        customer_mobile: entry.customer_mobile,
+        items: entry.items || [],
+      });
   const totalElements = ordersData?.data?.total_elements || 0;
   const totalPages = ordersData?.data?.total_pages || 0;
   const counts = countsData?.data || {};
+
+  const selectedProduct = products.find((product: ProductWithCategory) => String(product.id) === newOrder.productId);
+  const newOrderTotal = newOrderItems.reduce((total, item) => {
+    const product = products.find((candidate: ProductWithCategory) => candidate.id === item.product_id);
+    const price = item.serving_type === 'HALF' ? product?.half_plate_price : product?.full_plate_price;
+    return total + (price || 0) * item.quantity;
+  }, 0);
+
+  const addNewOrderItem = () => {
+    if (!selectedProduct) {
+      toast.error('Select a product');
+      return;
+    }
+    if (newOrder.servingType === 'HALF' && !selectedProduct.half_plate_available) {
+      toast.error('Half plate is not available for this product');
+      return;
+    }
+    const quantity = Number(newOrder.quantity);
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      toast.error('Quantity must be at least 1');
+      return;
+    }
+    const existing = newOrderItems.find(item => item.product_id === selectedProduct.id && item.serving_type === newOrder.servingType);
+    setNewOrderItems(existing
+      ? newOrderItems.map(item => item === existing ? { ...item, quantity: item.quantity + quantity } : item)
+      : [...newOrderItems, { product_id: selectedProduct.id, serving_type: newOrder.servingType, quantity }]);
+    setNewOrder({ ...newOrder, quantity: '1' });
+  };
+
+  const resetNewOrder = () => {
+    setNewOrder({ productId: '', servingType: 'FULL', quantity: '1', tableNumber: '', customerName: '', customerMobile: '' });
+    setNewOrderItems([]);
+  };
+
+  const createOrderMutation = useMutation({
+    mutationFn: createOrder,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['order-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] });
+      toast.success('Order created');
+      setShowAddOrder(false);
+      resetNewOrder();
+    },
+    onError: (error) => toast.error(`Failed to create order: ${String(error)}`),
+  });
+
+  const saveNewOrder = () => {
+    if (newOrderItems.length === 0) {
+      toast.error('Add at least one item');
+      return;
+    }
+    createOrderMutation.mutate({
+      table_number: newOrder.tableNumber.trim() || undefined,
+      customer_name: newOrder.customerName.trim() || undefined,
+      customer_mobile: newOrder.customerMobile.trim() || undefined,
+      items: newOrderItems,
+    });
+  };
 
   const getStatusBadge = (status: string) => {
     const option = STATUS_OPTIONS.find(s => s.value === status);
@@ -130,6 +212,9 @@ export default function Orders() {
           <h1 className="text-2xl font-bold">Orders</h1>
           <p className="text-muted-foreground text-sm mt-1">Manage and track all orders</p>
         </div>
+        <Button onClick={() => setShowAddOrder(true)} className="gap-2">
+          <Plus className="w-4 h-4" /> Add Order
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -242,7 +327,7 @@ export default function Orders() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
-                          {order.items.slice(0, 3).map((item) => (
+                          {order.items.slice(0, 3).map((item: OrderItemWithProduct) => (
                             <Badge key={item.id} variant="outline" className="text-xs">
                               {item.product_name} x{item.quantity}
                             </Badge>
@@ -408,6 +493,62 @@ export default function Orders() {
           </Dialog>
         )}
       </AnimatePresence>
+
+      <Dialog open={showAddOrder} onOpenChange={(open) => { setShowAddOrder(open); if (!open) resetNewOrder(); }}>
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add Order</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Customer name</label>
+                <Input value={newOrder.customerName} onChange={e => setNewOrder({ ...newOrder, customerName: e.target.value })} placeholder="Walk-in customer" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Mobile</label>
+                <Input value={newOrder.customerMobile} onChange={e => setNewOrder({ ...newOrder, customerMobile: e.target.value })} placeholder="Optional" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Table number</label>
+              <Input value={newOrder.tableNumber} onChange={e => setNewOrder({ ...newOrder, tableNumber: e.target.value })} placeholder="Leave blank for takeaway" />
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Product</label>
+                <select value={newOrder.productId} onChange={e => setNewOrder({ ...newOrder, productId: e.target.value })} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  <option value="">Select product</option>
+                  {products.filter(product => product.available).map(product => <option key={product.id} value={product.id}>{product.name} - {fmtCurrency(product.full_plate_price)}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Serving</label>
+                <select value={newOrder.servingType} onChange={e => setNewOrder({ ...newOrder, servingType: e.target.value as 'FULL' | 'HALF' })} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+                  <option value="FULL">Full</option>
+                  <option value="HALF" disabled={!selectedProduct?.half_plate_available}>Half</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Qty</label>
+                <Input type="number" min="1" value={newOrder.quantity} onChange={e => setNewOrder({ ...newOrder, quantity: e.target.value })} className="w-20" />
+              </div>
+            </div>
+            <Button type="button" variant="outline" onClick={addNewOrderItem} className="w-full gap-2"><Plus className="w-4 h-4" /> Add item</Button>
+            <div className="space-y-2 rounded-lg border p-3">
+              {newOrderItems.length === 0 ? <p className="text-sm text-muted-foreground">No items added.</p> : newOrderItems.map(item => {
+                const product = products.find(candidate => candidate.id === item.product_id);
+                return <div key={`${item.product_id}-${item.serving_type}`} className="flex items-center justify-between text-sm"><span>{product?.name} ({item.serving_type}) x{item.quantity}</span><button type="button" onClick={() => setNewOrderItems(newOrderItems.filter(current => current !== item))} aria-label="Remove item"><X className="h-4 w-4 text-muted-foreground" /></button></div>;
+              })}
+              <div className="border-t pt-2 text-right font-bold">Total: {fmtCurrency(newOrderTotal)}</div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setShowAddOrder(false)}>Cancel</Button>
+              <Button type="button" onClick={saveNewOrder} disabled={createOrderMutation.isPending || newOrderItems.length === 0}>{createOrderMutation.isPending ? 'Creating...' : 'Create Order'}</Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

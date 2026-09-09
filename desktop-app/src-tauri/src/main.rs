@@ -32,12 +32,18 @@ fn main() {
             .build())
         .setup(|app| {
             println!("[diag] setup() started");
-            let db = Database::new(app.handle().clone());
-            println!("[diag] Database::new() ok");
-            if let Err(e) = tauri::async_runtime::block_on(db.init()) {
-                eprintln!("[diag] db.init() FAILED: {e}");
-                return Err(Box::new(e));
-            }
+            let db = tauri::async_runtime::block_on(async {
+                let db = Database::new(app.handle().clone());
+                println!("[diag] Database::new() ok");
+                db.init().await.map(|_| db)
+            });
+            let db = match db {
+                Ok(db) => db,
+                Err(e) => {
+                    eprintln!("[diag] db.init() FAILED: {e}");
+                    return Err(Box::new(e));
+                }
+            };
             println!("[diag] db.init() ok");
             app.manage(Arc::new(db));
             println!("[diag] state managed; setup complete");

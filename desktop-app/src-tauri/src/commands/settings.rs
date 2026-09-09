@@ -1,5 +1,5 @@
 use crate::{database::{get_db, Database}, models::*, error::*};
-use tauri::State;
+use tauri::{Manager, State};
 
 use std::sync::Arc;
 use chrono::Local;
@@ -93,6 +93,7 @@ use chrono::Local;
         file_name: String,
         base64_data: String,
         _state: State<'_, Arc<Database>>,
+        app_handle: tauri::AppHandle,
     ) -> Result<ApiResponse<String>, String> {
         use base64::{Engine as _, engine::general_purpose};
         use std::path::Path;
@@ -101,7 +102,11 @@ use chrono::Local;
             .map_err(|e| AppError::Base64(e).to_string())?;
         
         // Save to app data directory
-        let app_data_dir = std::env::current_dir().unwrap().join("data").join("uploads");
+        let app_data_dir = app_handle
+            .path()
+            .app_data_dir()
+            .map_err(|e| AppError::Internal(e.to_string()).to_string())?
+            .join("uploads");
         std::fs::create_dir_all(&app_data_dir).map_err(|e| AppError::Io(e).to_string())?;
         
         let extension = Path::new(&file_name)

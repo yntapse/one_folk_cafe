@@ -48,7 +48,24 @@ export default function Dashboard() {
   });
 
   const metrics = metricsData?.data;
-  const recentOrders = recentOrdersData?.data?.content || [];
+  const recentOrders = (recentOrdersData?.data?.content || []).map((entry: any) => entry.order
+    ? entry
+    : {
+        order: {
+          id: entry.id,
+          customer_id: entry.customer_id,
+          table_number: entry.table_number,
+          status: entry.status,
+          total_amount: entry.total_amount,
+          payment_status: entry.payment_status || 'UNPAID',
+          payment_method: entry.payment_method,
+          paid_at: entry.paid_at,
+          created_at: entry.created_at,
+        },
+        customer_name: entry.customer_name,
+        customer_mobile: entry.customer_mobile,
+        items: entry.items || [],
+      });
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning'> = {

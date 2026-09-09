@@ -92,7 +92,7 @@ export default function AdminLayout() {
     <div className="min-h-screen flex bg-background">
       {/* Desktop Sidebar */}
       <aside className={cn(
-        'hidden md:flex h-screen sticky top-0 bg-sidebar border-r border-sidebar-border flex-col transition-all duration-300 z-40',
+        'hidden md:flex h-screen sticky top-0 bg-sidebar/95 backdrop-blur-xl border-r border-sidebar-border flex-col transition-all duration-300 z-40 shadow-[8px_0_30px_rgba(90,62,43,0.04)]',
         collapsed ? 'w-[72px]' : 'w-60'
       )}>
         <SidebarContent />
@@ -131,7 +131,7 @@ export default function AdminLayout() {
         </header>
 
         {/* Desktop Topbar */}
-        <header className="hidden md:flex sticky top-0 z-40 bg-card/80 backdrop-blur-lg border-b border-border h-16 items-center px-8 justify-between">
+        <header className="hidden md:flex sticky top-0 z-40 bg-card/75 backdrop-blur-xl border-b border-border h-16 items-center px-8 justify-between shadow-sm">
           <h1 className="font-bold text-lg">
             {ADMIN_NAV.find(n => n.id === location.pathname)?.label || 'Admin Portal'}
           </h1>

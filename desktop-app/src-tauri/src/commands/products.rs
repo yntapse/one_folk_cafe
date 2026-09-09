@@ -11,7 +11,12 @@ use std::sync::Arc;
         
         let products = sqlx::query_as::<_, ProductWithCategory>(
             r#"
-            SELECT p.*, c.name as category_name
+                 SELECT p.id, p.name, p.description,
+                     CAST(p.full_plate_price AS REAL) AS full_plate_price,
+                     CAST(p.half_plate_price AS REAL) AS half_plate_price,
+                     p.half_plate_available, p.image_url, p.category_id,
+                     p.available, p.is_active, p.created_at, p.updated_at,
+                     c.name as category_name
             FROM products p
             JOIN categories c ON p.category_id = c.id
             WHERE p.is_active = 1
@@ -34,7 +39,12 @@ use std::sync::Arc;
         
         let product = sqlx::query_as::<_, ProductWithCategory>(
             r#"
-            SELECT p.*, c.name as category_name
+                 SELECT p.id, p.name, p.description,
+                     CAST(p.full_plate_price AS REAL) AS full_plate_price,
+                     CAST(p.half_plate_price AS REAL) AS half_plate_price,
+                     p.half_plate_available, p.image_url, p.category_id,
+                     p.available, p.is_active, p.created_at, p.updated_at,
+                     c.name as category_name
             FROM products p
             JOIN categories c ON p.category_id = c.id
             WHERE p.id = ? AND p.is_active = 1
@@ -68,6 +78,20 @@ use std::sync::Arc;
         if !category_exists {
             return Err(AppError::Validation("Category not found".to_string()).to_string());
         }
+
+        if request.name.trim().is_empty() {
+            return Err(AppError::Validation("Product name is required".to_string()).to_string());
+        }
+
+        if !request.full_plate_price.is_finite() || request.full_plate_price <= 0.0 {
+            return Err(AppError::Validation("Full plate price must be greater than zero".to_string()).to_string());
+        }
+
+        if let Some(half_plate_price) = request.half_plate_price {
+            if !half_plate_price.is_finite() || half_plate_price <= 0.0 {
+                return Err(AppError::Validation("Half plate price must be greater than zero".to_string()).to_string());
+            }
+        }
         
         let result = sqlx::query(
             r#"
@@ -89,7 +113,12 @@ use std::sync::Arc;
         
         let product = sqlx::query_as::<_, ProductWithCategory>(
             r#"
-            SELECT p.*, c.name as category_name
+                 SELECT p.id, p.name, p.description,
+                     CAST(p.full_plate_price AS REAL) AS full_plate_price,
+                     CAST(p.half_plate_price AS REAL) AS half_plate_price,
+                     p.half_plate_available, p.image_url, p.category_id,
+                     p.available, p.is_active, p.created_at, p.updated_at,
+                     c.name as category_name
             FROM products p
             JOIN categories c ON p.category_id = c.id
             WHERE p.id = ?
@@ -166,7 +195,12 @@ use std::sync::Arc;
         
         let product = sqlx::query_as::<_, ProductWithCategory>(
             r#"
-            SELECT p.*, c.name as category_name
+                 SELECT p.id, p.name, p.description,
+                     CAST(p.full_plate_price AS REAL) AS full_plate_price,
+                     CAST(p.half_plate_price AS REAL) AS half_plate_price,
+                     p.half_plate_available, p.image_url, p.category_id,
+                     p.available, p.is_active, p.created_at, p.updated_at,
+                     c.name as category_name
             FROM products p
             JOIN categories c ON p.category_id = c.id
             WHERE p.id = ?
@@ -205,7 +239,15 @@ use std::sync::Arc;
         let db = get_db(&state);
         
         let product = sqlx::query_as::<_, Product>(
-            "SELECT * FROM products WHERE id = ?"
+                r#"
+                SELECT p.id, p.name, p.description,
+                       CAST(p.full_plate_price AS REAL) AS full_plate_price,
+                       CAST(p.half_plate_price AS REAL) AS half_plate_price,
+                       p.half_plate_available, p.image_url, p.category_id,
+                       p.available, p.is_active, p.created_at, p.updated_at
+                FROM products p
+                WHERE p.id = ?
+                "#
         )
         .bind(id)
         .fetch_optional(db)
@@ -224,7 +266,12 @@ use std::sync::Arc;
         
         let product = sqlx::query_as::<_, ProductWithCategory>(
             r#"
-            SELECT p.*, c.name as category_name
+            SELECT p.id, p.name, p.description,
+                   CAST(p.full_plate_price AS REAL) AS full_plate_price,
+                   CAST(p.half_plate_price AS REAL) AS half_plate_price,
+                   p.half_plate_available, p.image_url, p.category_id,
+                   p.available, p.is_active, p.created_at, p.updated_at,
+                   c.name as category_name
             FROM products p
             JOIN categories c ON p.category_id = c.id
             WHERE p.id = ?

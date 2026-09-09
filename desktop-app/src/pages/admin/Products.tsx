@@ -59,7 +59,7 @@ export default function Products() {
       toast.success('Product added!');
       setShowModal(false);
     },
-    onError: () => toast.error('Failed to add product'),
+    onError: (error) => toast.error(`Failed to add product: ${String(error)}`),
   });
 
   const updateMutation = useMutation({

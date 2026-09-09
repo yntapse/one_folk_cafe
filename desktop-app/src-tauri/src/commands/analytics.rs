@@ -31,7 +31,7 @@ use chrono::Local;
         .map_err(|e| AppError::Database(e).to_string())?;
         
         let total_revenue: Option<f64> = sqlx::query_scalar(&format!(
-            "SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE {} AND payment_status = 'PAID'",
+            "SELECT CAST(COALESCE(SUM(total_amount), 0) AS REAL) FROM orders WHERE {} AND payment_status = 'PAID'",
             date_filter
         ))
         .fetch_one(db)
@@ -125,7 +125,7 @@ use chrono::Local;
                     p.id as product_id,
                     p.name as product_name,
                     COALESCE(SUM(oi.quantity), 0) as total_quantity,
-                    COALESCE(SUM(oi.price * oi.quantity), 0) as total_revenue
+                    CAST(COALESCE(SUM(oi.price * oi.quantity), 0) AS REAL) as total_revenue
                 FROM products p
                 JOIN order_items oi ON p.id = oi.product_id
                 JOIN orders o ON oi.order_id = o.id
@@ -172,7 +172,7 @@ use chrono::Local;
                     c.id as category_id,
                     c.name as category_name,
                     COALESCE(SUM(oi.quantity), 0) as total_quantity,
-                    COALESCE(SUM(oi.price * oi.quantity), 0) as total_revenue
+                    CAST(COALESCE(SUM(oi.price * oi.quantity), 0) AS REAL) as total_revenue
                 FROM categories c
                 JOIN products p ON c.id = p.category_id
                 JOIN order_items oi ON p.id = oi.product_id
@@ -216,7 +216,7 @@ use chrono::Local;
                 SELECT 
                     strftime('{}', created_at) as date,
                     COUNT(*) as total_orders,
-                    COALESCE(SUM(total_amount), 0) as total_revenue
+                    CAST(COALESCE(SUM(total_amount), 0) AS REAL) as total_revenue
                 FROM orders
                 WHERE payment_status = 'PAID'
                 AND date(created_at) >= date('{}', '-{} days')

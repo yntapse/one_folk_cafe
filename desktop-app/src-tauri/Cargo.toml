@@ -1,6 +1,6 @@
 [package]
 name = "one-folk-cafe"
-version = "1.0.0"
+version = "1.0.1"
 description = "One Folk Cafe - Local Desktop Admin Panel"
 authors = ["Your Name <you@example.com>"]
 edition = "2021"
