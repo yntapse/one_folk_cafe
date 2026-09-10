@@ -78,6 +78,7 @@ export default function Orders() {
     mutationFn: ({ id, status }: { id: number; status: string }) => updateOrderStatus(id, { status }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['recent-orders'] });
       queryClient.invalidateQueries({ queryKey: ['order-counts'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] });
       toast.success('Order status updated');
@@ -91,6 +92,7 @@ export default function Orders() {
       updatePaymentStatus(id, { payment_status: paymentStatus, payment_method: paymentMethod }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['recent-orders'] });
       queryClient.invalidateQueries({ queryKey: ['order-counts'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] });
       toast.success('Payment status updated');
@@ -103,6 +105,7 @@ export default function Orders() {
     mutationFn: deleteOrder,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['recent-orders'] });
       queryClient.invalidateQueries({ queryKey: ['order-counts'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] });
       toast.success('Order deleted');
